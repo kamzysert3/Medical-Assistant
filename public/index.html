@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GreyHobb Chatbot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 h-screen flex items-center justify-center">
+    <div class="flex flex-col lg:w-full w-4/5 max-w-2xl mx-auto bg-white shadow-lg rounded-lg overflow-hidden" style="height: 90vh; border-radius: 15px; border: 1px solid #E0E0E0;">
+        <!-- Header -->
+        <div class="bg-gray-800 text-white p-4 flex justify-between items-center shadow-md">
+            <div class="flex items-center space-x-3">
+                <img src="https://greysoft.ng/pe/greysoftNGicon-01.svg" alt="Bot Avatar" class="w-12 h-12 rounded-full" style="background-color: white;">
+                <h4 class="text-xl font-semibold">MediCare Assistant</h4>
+            </div>
+            <div class="text-xs text-blue-100 flex items-center gap-2">
+                Available 24/7
+                <div class="h-1 w-1 rounded-full bg-green-500"></div>
+            </div>
+        </div>
+
+        <!-- Chat Messages -->
+        <div id="chat-container" class="flex-1 p-6 overflow-y-auto space-y-4 bg-gray-50" style="border-bottom: 1px solid #E0E0E0;">
+        </div>
+
+        <!-- Message Input -->
+        <div class="bg-gray-100 p-4 border-t border-gray-300">
+            <form id="chat-form" class="flex items-center space-x-4">
+                <input type="text" id="user-input" class="flex-1 bg-white border border-gray-300 rounded-full px-4 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-500" placeholder="Ask a medical question..." autocomplete="off" autofocus>
+                <button type="submit" class="bg-gray-600 text-white px-4 py-2 rounded-full hover:bg-blue-700 focus:outline-none">Send</button>
+            </form>
+        </div>
+    </div>
+
+
+<script>
+    document.getElementById('chat-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const userInput = document.getElementById('user-input').value;
+        if (userInput.trim() !== '') {
+            let message;
+            const chatContainer = document.getElementById('chat-container');
+            const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            if (chatContainer.querySelector('#suggestion')) {
+                chatContainer.removeChild(chatContainer.querySelector('#suggestion'))
+            }
+            const userMessage = `<div class="flex justify-end space-x-4">
+                                    <div class="text-right">
+                                        <div class="bg-gray-500 text-white p-4 rounded-lg shadow">
+                                            <p>${userInput}</p>
+                                        </div>
+                                        <span class="text-xs text-gray-500">${timestamp}</span>
+                                    </div>
+                                    <img src="https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp" alt="User Avatar" class="w-8 h-8 rounded-full">
+                                </div>`;
+            chatContainer.innerHTML += userMessage;
+            document.getElementById('user-input').value = '';
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+
+            const thinking = `<div id="thinking" class="flex items-start space-x-3">
+                                    <!-- Bot Avatar -->
+                                    <img src="https://greysoft.ng/pe/greysoftNGicon-01.svg" alt="Bot Avatar" class="w-10 h-10 rounded-full border border-gray-300 shadow-sm">
+                                    
+                                    <!-- Bot message container -->
+                                    <div>
+                                        <div class="bg-gray-100 text-gray-800 p-4 rounded-lg shadow-md" style="max-width: 250px;">
+                                            <p class="text-sm leading-5">Thinking ...</p>
+                                        </div>
+                                        <span class="text-xs text-gray-400 mt-1 block">${timestamp}</span>
+                                    </div>
+                                </div>`;
+            chatContainer.innerHTML += thinking;
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            
+            // Placeholder for chatbot response
+            const response = await fetch('/ask', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    message: userInput,
+                }),
+            })
+        
+            const data = await response.json();            
+            
+            if(data.answer.error){
+                console.error(data.answer.error);
+                message = "Something went wrong"
+            } else {
+                message = data.answer.prediction;
+                message = message.replace(/\[INST\] .*? \[\/INST\]/g, '');
+            }
+
+            // Remove the thinking message
+            chatContainer.removeChild(chatContainer.querySelector('#thinking'))
+
+            // Add Bot message to the chat container
+            const botMessage = `<div class="flex items-start space-x-3">
+                                    <!-- Bot Avatar -->
+                                    <img src="https://greysoft.ng/pe/greysoftNGicon-01.svg" alt="Bot Avatar" class="w-10 h-10 rounded-full border border-gray-300 shadow-sm">
+                                    
+                                    <!-- Bot message container -->
+                                    <div>
+                                        <div class="bg-gray-100 text-gray-800 p-4 rounded-lg shadow-md" style="max-width: 250px;">
+                                            <p class="text-sm leading-5">${message}</p>
+                                        </div>
+                                        <span class="text-xs text-gray-400 mt-1 block">${timestamp}</span>
+                                    </div>
+                                </div>`;
+            chatContainer.innerHTML += botMessage;
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+
+            // const suggestions = `<div id="suggestion" class="bg-gray-100 p-4 border-t border-gray-300">
+            //                         <div id="suggestion-container" class="flex space-x-2">
+            //                             <button class="bg-blue-100 text-blue-600 text-sm px-3 py-1 rounded-full hover:bg-blue-200 focus:outline-none shadow" onclick="sendSuggest('${data.answer.suggest}')">
+            //                                 ${data.answer.suggest}
+            //                             </button>
+            //                             <button class="bg-blue-100 text-blue-600 text-sm px-3 py-1 rounded-full hover:bg-blue-200 focus:outline-none shadow" onclick="sendSuggest('${data.answer.suggest}')">
+            //                                 ${data.answer.suggest}
+            //                             </button>
+            //                             <button class="bg-blue-100 text-blue-600 text-sm px-3 py-1 rounded-full hover:bg-blue-200 focus:outline-none shadow" onclick="sendSuggest('${data.answer.suggest}')">
+            //                                 ${data.answer.suggest}
+            //                             </button>
+            //                         </div>
+            //                     </div>`;
+
+            // chatContainer.innerHTML += suggestions;
+            // chatContainer.scrollTop = chatContainer.scrollHeight;
+
+        }
+    });
+    // function sendSuggest(message) {
+    //     const userInput = document.getElementById('user-input');
+    //     userInput.value = message
+    //     document.querySelector('#chat-form button[type="submit"]').click();
+    // }
+</script>
+</body>
+</html>
